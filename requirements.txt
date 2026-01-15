@@ -1,0 +1,5 @@
+# Task Picker Agent Dependencies
+pyyaml>=6.0
+
+# LLM Analysis (optional)
+anthropic>=0.30.0

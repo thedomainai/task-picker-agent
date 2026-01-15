@@ -18,8 +18,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WATCH_DIR="${1:-$HOME/workspace/obsidian_vault}"
 TASK_EXTRACTOR="$SCRIPT_DIR/task_extractor.py"
 
+# Output file (must match config.yaml)
+TASKS_FILE="$WATCH_DIR/docs/01_resource/tasks.md"
+
 # Exclude patterns (sessions dir is handled separately by session hooks)
-EXCLUDE_PATTERN="sessions|\.git|node_modules"
+# Also exclude tasks.md to prevent infinite loop
+EXCLUDE_PATTERN="sessions|\.git|node_modules|\.obsidian|tasks\.md"
 
 echo "🔍 Task Picker Agent - Watching for .md file saves"
 echo "   Directory: $WATCH_DIR"
@@ -47,6 +51,16 @@ fswatch -0 \
 
     # Skip session files (handled by session hooks)
     if [[ "$file" == *"/sessions/"* ]]; then
+        continue
+    fi
+
+    # Skip the output tasks file to prevent infinite loop
+    if [[ "$file" == "$TASKS_FILE" ]]; then
+        continue
+    fi
+
+    # Skip .obsidian directory
+    if [[ "$file" == *"/.obsidian/"* ]]; then
         continue
     fi
 

@@ -1,0 +1,47 @@
+# Task Picker Agent Configuration
+# ================================
+
+# Workspace directory (base path for all operations)
+workspace: ~/workspace/obsidian_vault
+
+# Output file for extracted tasks (relative to workspace)
+output: docs/01_resource/tasks.md
+
+# Session logs directory (relative to workspace)
+sessions_dir: docs/01_resource/sessions
+
+# Task detection patterns
+patterns:
+  # Unchecked task pattern: - [ ] task text
+  unchecked: "^(\\s*)-\\s*\\[\\s*\\]\\s*(.+)$"
+  # Checked task pattern: - [x] task text
+  checked: "^(\\s*)-\\s*\\[x\\]\\s*(.+)$"
+  # TODO/FIXME pattern
+  todo: "(?:TODO|FIXME|XXX):\\s*(.+)$"
+
+# Paths to exclude from watching (relative to workspace)
+exclude:
+  - docs/01_resource/sessions/
+  - docs/01_resource/tasks.md
+  - .git/
+  - node_modules/
+  - .obsidian/
+
+# Duplicate detection settings
+dedup:
+  enabled: true
+  # Case-insensitive comparison
+  case_insensitive: true
+
+# Logging settings
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  file: null   # Optional log file path (null = stderr only)
+
+# LLM Analysis settings
+llm:
+  enabled: false  # Set to true to enable LLM analysis by default
+  model: claude-sonnet-4-20250514  # Model to use for analysis
+  # api_key: null  # Set via ANTHROPIC_API_KEY env var (recommended)
+  min_confidence: low  # Minimum confidence level: low, medium, high
+  analyze_on_save: false  # Auto-analyze on file save (may incur API costs)
