@@ -1,6 +1,7 @@
 # Task Picker Agent
 
 Cursor内の作業からタスクを拾い上げ、tasks.mdに追加します。
+当日更新されたファイルから、追加されたタスクと完了したタスクを検出します。
 
 ## 実行手順
 
@@ -11,31 +12,51 @@ $CURRENT_DATE
 
 以下のソースからタスクを抽出してください：
 
-#### 2.1 Claude Codeセッションログから抽出
-セッションログを読み取り、`## Tasks` セクションのタスクを抽出：
+#### 2.1 当日更新されたファイルを検出
+ワークスペース内で今日更新された.mdファイルを検出：
 
 ```bash
-# 今月のセッションログを確認
-ls /Users/lemmaitt/workspace/obsidian_vault/docs/01_resource/sessions/$(date +%Y-%m)/
+# 今日更新された.mdファイルを検出
+find /Users/lemmaitt/workspace/obsidian_vault -name "*.md" -mtime -1 -type f 2>/dev/null | head -50
 ```
 
-各セッションファイル内の `## Tasks` セクションから未完了タスク `- [ ]` を抽出。
-
-#### 2.2 Git差分から作業内容を抽出
-現在のプロジェクトで変更されたファイルを確認：
+#### 2.2 Git差分からタスクの追加・完了を検出
+Git管理下のリポジトリで、タスクの変化を検出：
 
 ```bash
-git status --short
-git diff --stat HEAD~5  # 直近5コミットの変更
+# 各リポジトリでタスクの追加・完了を検出
+find ~/workspace -name ".git" -type d 2>/dev/null | while read gitdir; do
+  repo=$(dirname "$gitdir")
+  # 今日のコミットがあるリポジトリのみ処理
+  if git -C "$repo" log --oneline --since="today 00:00" 2>/dev/null | grep -q .; then
+    echo "=== $repo ==="
+    # タスクの追加（+ - [ ]）と完了（- - [ ] → + - [x]）を検出
+    git -C "$repo" diff HEAD~3 -- "*.md" 2>/dev/null | grep -E "^[\+\-].*\- \[.\]" | head -20
+  fi
+done
 ```
 
-変更内容から「何をしたか」「何が残っているか」を推測。
+**検出パターン:**
+- `+ - [ ] タスク` → 新規追加されたタスク
+- `- - [ ] タスク` → 削除または完了に変更されたタスク
+- `+ - [x] タスク` → 完了としてマークされたタスク
 
-#### 2.3 プロジェクト内ドキュメントから抽出
-プロジェクト内の.mdファイルからTODO/FIXMEなどを検索：
+#### 2.3 Claude Codeセッションログから抽出
+今日更新されたセッションログを読み取り、タスクを抽出：
 
 ```bash
-grep -r "TODO\|FIXME\|\- \[ \]" --include="*.md" . 2>/dev/null | head -20
+# 今日のセッションログを確認
+find /Users/lemmaitt/workspace/obsidian_vault/docs/01_resource/sessions -name "*.md" -mtime -1 -type f 2>/dev/null
+```
+
+各セッションファイル内の `## Tasks` セクションからタスクを抽出。
+
+#### 2.4 更新されたドキュメントからTODO/FIXMEを抽出
+今日更新されたファイル内のTODO/FIXMEを検索：
+
+```bash
+# 今日更新されたファイルからTODO/FIXMEを抽出
+find /Users/lemmaitt/workspace/obsidian_vault -name "*.md" -mtime -1 -type f -exec grep -l "TODO\|FIXME\|\- \[ \]" {} \; 2>/dev/null
 ```
 
 ### 3. タスク一覧の作成
@@ -45,15 +66,19 @@ grep -r "TODO\|FIXME\|\- \[ \]" --include="*.md" . 2>/dev/null | head -20
 ```markdown
 ## Tasks picked on YYYY-MM-DD
 
-### From Session Logs
-- [ ] タスク1（session-xxxx）
-- [ ] タスク2（session-yyyy）
+### 🆕 追加されたタスク
+- [ ] 新しく追加されたタスク1（ファイル名）
+- [ ] 新しく追加されたタスク2（ファイル名）
 
-### From Git Changes
-- [ ] 変更内容に基づくタスク
+### ✅ 完了したタスク
+- [x] 完了したタスク1（ファイル名）
+- [x] 完了したタスク2（ファイル名）
 
-### From Documents
-- [ ] ドキュメントから抽出したタスク
+### 📋 セッションログからのタスク
+- [ ] セッション内タスク（session-xxxx）
+
+### 📝 ドキュメント内のTODO/FIXME
+- [ ] TODO: 説明（ファイル名）
 ```
 
 ### 4. tasks.mdへの追記
@@ -64,8 +89,6 @@ grep -r "TODO\|FIXME\|\- \[ \]" --include="*.md" . 2>/dev/null | head -20
 /Users/lemmaitt/workspace/obsidian_vault/docs/01_resource/tasks.md
 ```
 
-`## Next Steps` セクションの下に、抽出したタスクを追加。
-
 ### 5. 完了報告
 
-追加したタスク数と内容のサマリーを表示。
+追加したタスク数と完了したタスク数のサマリーを表示。
