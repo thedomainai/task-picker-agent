@@ -1,97 +1,134 @@
 # Task Picker Agent
 
-Cursor内の作業からタスクを拾い上げ、tasks.mdに追加するClaude Codeカスタムコマンド。
+Cursor内の作業からタスクを拾い上げ、tasks.mdに追加するエージェント。
 
 ## 概要
 
-このエージェントは**当日更新されたファイル**から、タスクの追加・完了を自動検出します：
+このエージェントは**リアルタイム**でタスクを検出・追記します：
 
-- **当日更新ファイル検出** - 今日変更された.mdファイルを自動検出
-- **Git差分解析** - `- [ ]` → `- [x]` などのタスク状態変化を検出
-- **セッションログ** - Claude Codeセッション内のタスクを抽出
+- **ファイル保存時** - .mdファイル保存でタスクを自動抽出
+- **セッション完了時** - Claude Code/Geminiセッション終了でタスクを抽出
+- **Git差分解析** - タスク状態の変化（追加・完了）を検出
 - **TODO/FIXME検出** - ドキュメント内のTODO/FIXMEを収集
 
-抽出されたタスクは `tasks.md` に追記され、後段の **Task Orchestration Agent** が深掘り・工数見積もりを行います。
+## トリガー
 
-## 検出パターン
-
-| パターン | 意味 |
-|----------|------|
-| `+ - [ ] タスク` | 新規追加されたタスク |
-| `- - [ ] タスク` | 削除または完了に変更 |
-| `+ - [x] タスク` | 完了としてマーク |
+| トリガー | 実装 | 説明 |
+|----------|------|------|
+| ファイル保存 | `watch_docs.sh` (fswatch) | .mdファイル保存時に自動実行 |
+| セッション完了 | `cli-session-log` 連携 | Claude Code/Gemini終了時に自動実行 |
+| 手動実行 | `/daily-tasks` | Claude Codeコマンドで実行 |
 
 ## アーキテクチャ
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                  Task Picker Agent                       │
-│      当日更新ファイルからタスクの追加・完了を検出         │
+│              リアルタイムでタスクを検出                   │
 ├─────────────────────────────────────────────────────────┤
-│  入力                                                    │
-│  ├── 当日更新された.mdファイル                          │
-│  ├── Git差分（タスク状態の変化を検出）                  │
-│  ├── Claude Codeセッションログ                          │
-│  └── TODO/FIXME                                         │
+│  トリガー                                                │
+│  ├── .mdファイル保存 → watch_docs.sh (fswatch)         │
+│  └── CLIセッション完了 → cli-session-log hook          │
+├─────────────────────────────────────────────────────────┤
+│  抽出対象                                                │
+│  ├── - [ ] 未完了タスク                                 │
+│  ├── - [x] 完了タスク                                   │
+│  └── TODO/FIXME コメント                                │
 ├─────────────────────────────────────────────────────────┤
 │  出力                                                    │
-│  ├── 🆕 追加されたタスク                                │
-│  ├── ✅ 完了したタスク                                  │
-│  └── 📝 TODO/FIXME                                      │
+│  └── tasks.md に追記                                    │
 ├─────────────────────────────────────────────────────────┤
-│  後段処理（別ツール）                                    │
-│  └── Task Orchestration Agent                           │
-│       ├── タスクの深掘り                                │
-│       └── 工数見積もり                                  │
+│  後段処理                                                │
+│  └── Task Orchestration Agent（深掘り・工数見積もり）   │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ## インストール
 
-1. このリポジトリをクローン
+### 1. リポジトリをクローン
+
 ```bash
 git clone https://github.com/thedomainai/task-picker-agent.git
 ```
 
-2. `.claude/commands/daily-tasks.md` をプロジェクトの `.claude/commands/` にコピー
+### 2. fswatchをインストール（ファイル監視用）
+
 ```bash
-mkdir -p .claude/commands
-cp task-picker-agent/.claude/commands/daily-tasks.md .claude/commands/
+brew install fswatch
 ```
 
-3. 設定をカスタマイズ
-   - `daily-tasks.md` 内のパスを自分の環境に合わせて変更
-   - ワークスペースのパス
-   - セッションログのパス
-   - tasks.mdの出力先
+### 3. ファイル監視を開始
+
+```bash
+./watch_docs.sh ~/workspace/obsidian_vault
+```
+
+### 4. （オプション）cli-session-logと連携
+
+セッション完了時の自動タスク抽出は [cli-session-log](https://github.com/thedomainai/cli-session-log) と連携します。
+
+## ファイル構成
+
+```
+task-picker-agent/
+├── task_extractor.py      # タスク抽出コアロジック
+├── watch_docs.sh          # ファイル監視スクリプト
+├── .claude/
+│   └── commands/
+│       └── daily-tasks.md # Claude Code手動コマンド
+└── README.md
+```
 
 ## 使い方
 
-Claude Codeで以下のコマンドを実行：
+### 自動実行（推奨）
+
+```bash
+# ターミナルで監視を開始
+./watch_docs.sh ~/workspace/obsidian_vault
+
+# 🔍 Task Picker Agent - Watching for .md file saves
+#    Directory: ~/workspace/obsidian_vault
+#    Press Ctrl+C to stop
+```
+
+### 手動実行
+
+```bash
+# 特定ファイルからタスク抽出
+python task_extractor.py --file /path/to/file.md
+
+# セッションログからタスク抽出
+python task_extractor.py --session <session_id>
+
+# Git差分からタスク抽出
+python task_extractor.py --git-diff
+
+# ドライラン（追記せずに確認）
+python task_extractor.py --file /path/to/file.md --dry-run
+```
+
+### Claude Codeコマンド
 
 ```
 /daily-tasks
 ```
 
-### フロー
-
-1. **ファイル検出** - 当日更新された.mdファイルを検出
-2. **差分解析** - Git差分からタスクの追加・完了を検出
-3. **セッション抽出** - セッションログからタスクを抽出
-4. **確認** - ユーザーがタスク内容を確認・編集
-5. **追記** - tasks.mdに追記
-
 ## 設定項目
+
+`task_extractor.py` 内の設定：
 
 | 項目 | デフォルト値 |
 |------|-------------|
-| ワークスペース | `/Users/lemmaitt/workspace/obsidian_vault` |
-| セッションログ | `docs/01_resource/sessions/` |
-| タスク出力先 | `docs/01_resource/tasks.md` |
+| `WORKSPACE_DIR` | `~/workspace/obsidian_vault` |
+| `TASKS_FILE` | `docs/01_resource/tasks.md` |
+| `SESSIONS_DIR` | `docs/01_resource/sessions` |
 
 ## 必要環境
 
-- [Claude Code](https://claude.ai/claude-code)
+- Python 3.10+
+- fswatch (`brew install fswatch`)
+- [Claude Code](https://claude.ai/claude-code)（オプション）
 
 ## ライセンス
 

@@ -1,0 +1,57 @@
+#!/bin/bash
+# =============================================================================
+# Task Picker Agent - Document Watcher
+# =============================================================================
+# Watch for .md file saves and extract tasks automatically
+#
+# Requirements:
+#   brew install fswatch
+#
+# Usage:
+#   ./watch_docs.sh [watch_directory]
+#
+# Example:
+#   ./watch_docs.sh ~/workspace/obsidian_vault
+# =============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WATCH_DIR="${1:-$HOME/workspace/obsidian_vault}"
+TASK_EXTRACTOR="$SCRIPT_DIR/task_extractor.py"
+
+# Exclude patterns (sessions dir is handled separately by session hooks)
+EXCLUDE_PATTERN="sessions|\.git|node_modules"
+
+echo "🔍 Task Picker Agent - Watching for .md file saves"
+echo "   Directory: $WATCH_DIR"
+echo "   Press Ctrl+C to stop"
+echo ""
+
+# Check if fswatch is installed
+if ! command -v fswatch &> /dev/null; then
+    echo "Error: fswatch is not installed"
+    echo "Install with: brew install fswatch"
+    exit 1
+fi
+
+# Watch for file modifications
+fswatch -0 \
+    --event Updated \
+    --include '\.md$' \
+    --exclude "$EXCLUDE_PATTERN" \
+    "$WATCH_DIR" | while read -d "" file; do
+
+    # Skip if file doesn't exist (might have been deleted)
+    if [[ ! -f "$file" ]]; then
+        continue
+    fi
+
+    # Skip session files (handled by session hooks)
+    if [[ "$file" == *"/sessions/"* ]]; then
+        continue
+    fi
+
+    echo "📄 File saved: $(basename "$file")"
+
+    # Extract tasks from the saved file
+    python3 "$TASK_EXTRACTOR" --file "$file"
+done
