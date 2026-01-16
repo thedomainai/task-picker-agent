@@ -22,7 +22,6 @@ Usage:
 import argparse
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import TypedDict
 
@@ -317,13 +316,8 @@ def append_to_tasks_file(
         print("No new tasks to add")
         return
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-
     # Build task lines to insert
     task_lines = []
-
-    # Add source comment
-    task_lines.append(f"<!-- from {source} ({timestamp}) -->\n")
 
     if tasks["added"]:
         for task in tasks["added"]:
