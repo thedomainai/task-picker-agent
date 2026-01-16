@@ -1,17 +1,21 @@
 # Task Picker Agent Configuration
 # ================================
+# Copy this file to config.yaml and modify for your environment:
+#   cp config.yaml.example config.yaml
 
 # Workspace directory (base path for all operations)
-workspace: ~/workspace/obsidian_vault
+# This should point to your notes/documents directory
+workspace: ~/your-workspace
 
 # Output file for extracted tasks (relative to workspace)
-output: docs/01_resource/tasks.md
+output: tasks.md
 
 # Section name where tasks will be inserted (must start with ##)
 inbox_section: "## Inbox"
 
 # Session logs directory (relative to workspace)
-sessions_dir: docs/01_resource/sessions
+# Used for CLI session integration (optional)
+sessions_dir: sessions
 
 # Task detection patterns
 patterns:
@@ -24,8 +28,8 @@ patterns:
 
 # Paths to exclude from watching (relative to workspace)
 exclude:
-  - docs/01_resource/sessions/
-  - docs/01_resource/tasks.md
+  - sessions/
+  - tasks.md
   - .git/
   - node_modules/
   - .obsidian/
@@ -41,7 +45,7 @@ logging:
   level: INFO  # DEBUG, INFO, WARNING, ERROR
   file: null   # Optional log file path (null = stderr only)
 
-# LLM Analysis settings
+# LLM Analysis settings (optional, requires ANTHROPIC_API_KEY)
 llm:
   enabled: false  # Set to true to enable LLM analysis by default
   model: claude-sonnet-4-20250514  # Model to use for analysis

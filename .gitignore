@@ -24,5 +24,11 @@ ENV/
 .coverage
 htmlcov/
 
-# Local config (if contains secrets)
-# config.local.yaml
+# Local configuration (user-specific)
+config.yaml
+
+# Feedback database (contains user data)
+feedback.db
+
+# Task state
+.claude/current-task.json

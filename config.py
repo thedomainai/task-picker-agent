@@ -20,18 +20,18 @@ except ImportError:
 
 # Default configuration
 DEFAULT_CONFIG = {
-    "workspace": "~/workspace/obsidian_vault",
-    "output": "docs/01_resource/tasks.md",
+    "workspace": ".",  # Current directory by default
+    "output": "tasks.md",
     "inbox_section": "## Inbox",
-    "sessions_dir": "docs/01_resource/sessions",
+    "sessions_dir": "sessions",
     "patterns": {
         "unchecked": r"^(\s*)-\s*\[\s*\]\s*(.+)$",
         "checked": r"^(\s*)-\s*\[x\]\s*(.+)$",
         "todo": r"(?:TODO|FIXME|XXX):\s*(.+)$",
     },
     "exclude": [
-        "docs/01_resource/sessions/",
-        "docs/01_resource/tasks.md",
+        "sessions/",
+        "tasks.md",
         ".git/",
         "node_modules/",
         ".obsidian/",

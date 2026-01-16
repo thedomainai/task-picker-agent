@@ -1,94 +1,92 @@
 # Task Picker Agent
 
-Cursor内の作業からタスクを拾い上げ、tasks.mdに追加します。
-当日更新されたファイルから、追加されたタスクと完了したタスクを検出します。
+Extract tasks from your workspace and add them to tasks.md.
+Detects added and completed tasks from files modified today.
 
-## 実行手順
+## Steps
 
-### 1. 今日の日付
+### 1. Current Date
 $CURRENT_DATE
 
-### 2. 情報収集
+### 2. Gather Information
 
-以下のソースからタスクを抽出してください：
+Extract tasks from the following sources:
 
-#### 2.1 当日更新されたファイルを検出
-ワークスペース内で今日更新された.mdファイルを検出：
+#### 2.1 Detect Files Modified Today
+Find .md files modified today in the workspace:
 
 ```bash
-# 今日更新された.mdファイルを検出
-find /Users/lemmaitt/workspace/obsidian_vault -name "*.md" -mtime -1 -type f 2>/dev/null | head -50
+# Find .md files modified today
+# Replace $WORKSPACE with your workspace path
+find "$WORKSPACE" -name "*.md" -mtime -1 -type f 2>/dev/null | head -50
 ```
 
-#### 2.2 Git差分からタスクの追加・完了を検出
-Git管理下のリポジトリで、タスクの変化を検出：
+#### 2.2 Detect Task Changes from Git Diff
+Detect task additions and completions in Git repositories:
 
 ```bash
-# 各リポジトリでタスクの追加・完了を検出
+# Detect task changes in each repository
 find ~/workspace -name ".git" -type d 2>/dev/null | while read gitdir; do
   repo=$(dirname "$gitdir")
-  # 今日のコミットがあるリポジトリのみ処理
+  # Only process repos with commits today
   if git -C "$repo" log --oneline --since="today 00:00" 2>/dev/null | grep -q .; then
     echo "=== $repo ==="
-    # タスクの追加（+ - [ ]）と完了（- - [ ] → + - [x]）を検出
+    # Detect task additions (+ - [ ]) and completions (- - [ ] → + - [x])
     git -C "$repo" diff HEAD~3 -- "*.md" 2>/dev/null | grep -E "^[\+\-].*\- \[.\]" | head -20
   fi
 done
 ```
 
-**検出パターン:**
-- `+ - [ ] タスク` → 新規追加されたタスク
-- `- - [ ] タスク` → 削除または完了に変更されたタスク
-- `+ - [x] タスク` → 完了としてマークされたタスク
+**Detection Patterns:**
+- `+ - [ ] task` → Newly added task
+- `- - [ ] task` → Deleted or changed to completed
+- `+ - [x] task` → Marked as completed
 
-#### 2.3 Claude Codeセッションログから抽出
-今日更新されたセッションログを読み取り、タスクを抽出：
-
-```bash
-# 今日のセッションログを確認
-find /Users/lemmaitt/workspace/obsidian_vault/docs/01_resource/sessions -name "*.md" -mtime -1 -type f 2>/dev/null
-```
-
-各セッションファイル内の `## Tasks` セクションからタスクを抽出。
-
-#### 2.4 更新されたドキュメントからTODO/FIXMEを抽出
-今日更新されたファイル内のTODO/FIXMEを検索：
+#### 2.3 Extract from Session Logs (Optional)
+If using CLI session integration, extract tasks from today's session logs:
 
 ```bash
-# 今日更新されたファイルからTODO/FIXMEを抽出
-find /Users/lemmaitt/workspace/obsidian_vault -name "*.md" -mtime -1 -type f -exec grep -l "TODO\|FIXME\|\- \[ \]" {} \; 2>/dev/null
+# Check today's session logs
+find "$WORKSPACE/sessions" -name "*.md" -mtime -1 -type f 2>/dev/null
 ```
 
-### 3. タスク一覧の作成
+#### 2.4 Extract TODO/FIXME from Updated Documents
+Search for TODO/FIXME in files modified today:
 
-収集した情報から、以下の形式でタスク一覧を作成：
+```bash
+# Extract TODO/FIXME from files modified today
+find "$WORKSPACE" -name "*.md" -mtime -1 -type f -exec grep -l "TODO\|FIXME\|\- \[ \]" {} \; 2>/dev/null
+```
+
+### 3. Create Task List
+
+Create a task list from gathered information:
 
 ```markdown
 ## Tasks picked on YYYY-MM-DD
 
-### 🆕 追加されたタスク
-- [ ] 新しく追加されたタスク1（ファイル名）
-- [ ] 新しく追加されたタスク2（ファイル名）
+### New Tasks
+- [ ] New task 1 (filename)
+- [ ] New task 2 (filename)
 
-### ✅ 完了したタスク
-- [x] 完了したタスク1（ファイル名）
-- [x] 完了したタスク2（ファイル名）
+### Completed Tasks
+- [x] Completed task 1 (filename)
+- [x] Completed task 2 (filename)
 
-### 📋 セッションログからのタスク
-- [ ] セッション内タスク（session-xxxx）
+### Session Log Tasks
+- [ ] Session task (session-xxxx)
 
-### 📝 ドキュメント内のTODO/FIXME
-- [ ] TODO: 説明（ファイル名）
+### TODO/FIXME in Documents
+- [ ] TODO: description (filename)
 ```
 
-### 4. tasks.mdへの追記
+### 4. Append to tasks.md
 
-ユーザー確認後、以下のファイルに追記：
-
+After user confirmation, append to:
 ```
-/Users/lemmaitt/workspace/obsidian_vault/docs/01_resource/tasks.md
+$WORKSPACE/tasks.md
 ```
 
-### 5. 完了報告
+### 5. Summary
 
-追加したタスク数と完了したタスク数のサマリーを表示。
+Display summary of added and completed tasks.

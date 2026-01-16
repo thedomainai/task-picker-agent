@@ -10,16 +10,17 @@
 # Usage:
 #   ./watch_docs.sh [watch_directory]
 #
-# Example:
-#   ./watch_docs.sh ~/workspace/obsidian_vault
+# Examples:
+#   ./watch_docs.sh                    # Watch current directory
+#   ./watch_docs.sh ~/notes            # Watch specific directory
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WATCH_DIR="${1:-$HOME/workspace/obsidian_vault}"
+WATCH_DIR="${1:-.}"  # Default to current directory
 TASK_EXTRACTOR="$SCRIPT_DIR/task_extractor.py"
 
 # Output file (must match config.yaml)
-TASKS_FILE="$WATCH_DIR/docs/01_resource/tasks.md"
+TASKS_FILE="$WATCH_DIR/tasks.md"
 
 # Exclude patterns (sessions dir is handled separately by session hooks)
 # Also exclude tasks.md to prevent infinite loop
