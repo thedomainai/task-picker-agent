@@ -7,6 +7,9 @@ workspace: ~/workspace/obsidian_vault
 # Output file for extracted tasks (relative to workspace)
 output: docs/01_resource/tasks.md
 
+# Section name where tasks will be inserted (must start with ##)
+inbox_section: "## Inbox"
+
 # Session logs directory (relative to workspace)
 sessions_dir: docs/01_resource/sessions
 

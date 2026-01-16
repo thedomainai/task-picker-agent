@@ -22,6 +22,7 @@ except ImportError:
 DEFAULT_CONFIG = {
     "workspace": "~/workspace/obsidian_vault",
     "output": "docs/01_resource/tasks.md",
+    "inbox_section": "## Inbox",
     "sessions_dir": "docs/01_resource/sessions",
     "patterns": {
         "unchecked": r"^(\s*)-\s*\[\s*\]\s*(.+)$",
@@ -129,6 +130,11 @@ class Config:
     def output_file(self) -> Path:
         """Get output tasks file path."""
         return self._output
+
+    @property
+    def inbox_section(self) -> str:
+        """Get the inbox section marker."""
+        return self._config["inbox_section"]
 
     @property
     def sessions_dir(self) -> Path:

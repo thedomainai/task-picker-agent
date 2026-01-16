@@ -319,51 +319,73 @@ def append_to_tasks_file(
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    # Build content to append
-    lines = [f"\n## Tasks from {source} ({timestamp})\n"]
+    # Build task lines to insert
+    task_lines = []
+
+    # Add source comment
+    task_lines.append(f"<!-- from {source} ({timestamp}) -->\n")
 
     if tasks["added"]:
-        lines.append("\n### New Tasks\n")
         for task in tasks["added"]:
-            lines.append(f"- [ ] {task}\n")
+            task_lines.append(f"- [ ] {task}\n")
 
     if tasks["completed"]:
-        lines.append("\n### Completed\n")
         for task in tasks["completed"]:
-            lines.append(f"- [x] {task}\n")
+            task_lines.append(f"- [x] {task}\n")
 
     if tasks["todos"]:
-        lines.append("\n### TODO/FIXME\n")
         for todo in tasks["todos"]:
-            lines.append(f"- [ ] {todo}\n")
+            task_lines.append(f"- [ ] {todo}\n")
 
     # Add LLM-detected implicit tasks
     if implicit:
-        lines.append("\n### Implicit Tasks (AI-detected)\n")
         for task in implicit:
             conf_marker = {"high": "!", "medium": "?", "low": "~"}.get(task["confidence"], "?")
-            lines.append(f"- [ ] [{conf_marker}] {task['task']}\n")
-            if task.get("reason"):
-                lines.append(f"  - Reason: {task['reason']}\n")
+            task_lines.append(f"- [ ] [{conf_marker}] {task['task']}\n")
 
     # Add incomplete sections as tasks
     if incomplete_sections:
-        lines.append("\n### Incomplete Sections\n")
         for section in incomplete_sections:
-            lines.append(f"- [ ] Complete section: {section}\n")
+            task_lines.append(f"- [ ] Complete section: {section}\n")
 
     # Add unanswered questions as tasks
     if unanswered_questions:
-        lines.append("\n### Unanswered Questions\n")
         for question in unanswered_questions:
-            lines.append(f"- [ ] Answer: {question}\n")
+            task_lines.append(f"- [ ] Answer: {question}\n")
 
-    # Append to tasks file
+    # Insert tasks under "## Inbox" section
     output_file = config.output_file
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_file, "a", encoding="utf-8") as f:
-        f.writelines(lines)
+    # Read existing content
+    inbox_section = config.inbox_section
+    if output_file.exists():
+        content = output_file.read_text(encoding="utf-8")
+    else:
+        content = f"{inbox_section}\n\n## Archive\n"
+
+    # Find inbox section and insert after it
+    if inbox_section in content:
+        # Find the position after inbox section line
+        inbox_pos = content.find(inbox_section)
+        # Find the end of the line
+        newline_pos = content.find("\n", inbox_pos)
+        if newline_pos == -1:
+            newline_pos = len(content)
+
+        # Insert task lines after inbox section header
+        insert_pos = newline_pos + 1
+        new_content = (
+            content[:insert_pos] +
+            "".join(task_lines) +
+            content[insert_pos:]
+        )
+    else:
+        # If no Inbox section, create one at the beginning
+        new_content = f"{inbox_section}\n{''.join(task_lines)}\n{content}"
+
+    # Write back
+    output_file.write_text(new_content, encoding="utf-8")
 
     counts = [
         f"{len(tasks['added'])} new",
@@ -377,7 +399,7 @@ def append_to_tasks_file(
     if unanswered_questions:
         counts.append(f"{len(unanswered_questions)} questions")
 
-    print(f"Added: {', '.join(counts)}")
+    print(f"Added to Inbox: {', '.join(counts)}")
 
 
 def main():
